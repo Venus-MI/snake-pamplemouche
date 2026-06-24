@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Snake - Pamplemouche</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0a;
+      color: #fff;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+    a { color: inherit; text-decoration: none; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #111; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+    /* Top bar */
+    .topbar {
+      display: flex;
+      align-items: center;
+      padding: 10px 16px;
+      background: #111;
+      border-bottom: 2px solid #ffc832;
+      gap: 12px;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+    .topbar .logo { font-size: 16px; font-weight: 800; color: #ffc832; }
+    .topbar .logo span { color: #ff88ff; }
+    .topbar .logo a:hover { opacity: .8; }
+    .topbar .sep { color: #333; margin: 0 2px; }
+    .topbar .page-title { font-size: 15px; font-weight: 600; color: #fff; }
+    .topbar-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .user-info { font-size: 13px; color: #aaa; }
+    .user-info strong { color: #ffc832; }
+    .coins-display { color: #ffc832; font-size: 13px; font-weight: 700; }
+    .btn-logout {
+      background: #222;
+      border: 1px solid #333;
+      color: #888;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .btn-logout:hover { color: #fff; border-color: #555; }
+
+    /* Login overlay */
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .login-overlay.hidden { display: none; }
+    .login-box {
+      background: #1a1a1a;
+      border: 2px solid #ffc832;
+      border-radius: 16px;
+      padding: 30px;
+      width: 340px;
+      max-width: 90vw;
+    }
+    .login-box h2 {
+      text-align: center;
+      color: #ffc832;
+      margin-bottom: 6px;
+      font-size: 1.3em;
+    }
+    .login-box .subtitle {
+      text-align: center;
+      color: #666;
+      font-size: 0.8em;
+      margin-bottom: 18px;
+    }
+    .login-tabs {
+      display: flex;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #333;
+    }
+    .login-tab {
+      flex: 1;
+      text-align: center;
+      padding: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #666;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color .2s;
+    }
+    .login-tab.active { color: #ffc832; border-bottom-color: #ffc832; }
+    .login-box input {
+      display: block;
+      width: 100%;
+      padding: 10px 14px;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      margin-bottom: 10px;
+      outline: none;
+    }
+    .login-box input:focus { border-color: #ffc832; }
+    .login-box .btn-primary {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      background: #ffc832;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+    .login-box .btn-primary:hover { background: #ffda6a; }
+    .login-error {
+      color: #ff4444;
+      font-size: 12px;
+      text-align: center;
+      min-height: 16px;
+      margin-top: 8px;
+    }
+
+    /* Main content area */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-y: auto;
+      padding: 0;
+    }
+
+    /* Screens */
+    .screen { display: none; width: 100%; flex: 1; flex-direction: column; align-items: center; }
+    .screen.active { display: flex; }
+
+    /* Lobby */
+    .lobby {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 16px;
+      flex: 1;
+      gap: 10px;
+      max-width: 440px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    .lobby h1 {
+      font-size: 2em;
+      color: #ffc832;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .lobby h1 small { display: block; font-size: 0.4em; color: #ff88ff; font-weight: 400; }
+    .lobby .best-score {
+      color: #666;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+    .lobby .best-score strong { color: #ffc832; }
+    .big-btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: #ffc832;
+      color: #000;
+      border: none;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+    }
+    .big-btn:hover { background: #ffda6a; }
+    .big-btn:active { transform: scale(0.97); }
+    .big-btn.secondary {
+      background: #1a1a1a;
+      color: #fff;
+      border: 1px solid #333;
+    }
+    .big-btn.secondary:hover { border-color: #555; background: #222; }
+    .big-btn.pink { background: #ff88ff; color: #000; }
+    .big-btn.pink:hover { background: #ffaaff; }
+
+    .lobby-section {
+      width: 100%;
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 6px;
+    }
+    .lobby-section h3 {
+      color: #ffc832;
+      font-size: 14px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .lobby-section input {
+      display: block;
+      width: 100%;
+      padding: 10px 14px;
+      background: #222;
+      border: 2px solid #444;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 1.1em;
+      text-align: center;
+      outline: none;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      font-weight: 700;
+    }
+    .lobby-section input:focus { border-color: #ffc832; }
+    .party-code-display {
+      font-size: 2.4em;
+      font-weight: 800;
+      color: #ffc832;
+      text-align: center;
+      letter-spacing: 0.25em;
+      margin: 8px 0;
+    }
+    .party-status {
+      text-align: center;
+      color: #666;
+      font-size: 12px;
+    }
+    .party-players {
+      margin-top: 10px;
+    }
+    .party-player {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: #1a1a1a;
+      border-radius: 8px;
+      margin-bottom: 4px;
+    }
+    .party-player .avatar {
+      width: 28px; height: 28px;
+      background: #ffc832;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: #000;
+    }
+    .party-player .name { font-size: 13px; }
+    .party-player .host-badge {
+      font-size: 10px;
+      background: #ffc832;
+      color: #000;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      margin-left: auto;
+    }
+
+    /* Friends panel in lobby */
+    .friends-section {
+      width: 100%;
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 6px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .friends-section h3 {
+      color: #ff88ff;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .friend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      transition: background .15s;
+    }
+    .friend-row:hover { background: #1a1a1a; }
+    .friend-row .avatar {
+      width: 26px; height: 26px;
+      background: #ff88ff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: #000;
+    }
+    .friend-row .name { flex: 1; font-size: 13px; }
+    .btn-invite {
+      background: #ff88ff;
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-invite:hover { background: #ffaaff; }
+    .btn-invite:disabled { opacity: 0.4; cursor: default; }
+
+    /* Game screen */
+    .game-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      flex: 1;
+      padding: 10px;
+    }
+    .game-hud {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      padding: 8px 16px;
+      width: 100%;
+      max-width: 500px;
+    }
+    .hud-item {
+      text-align: center;
+    }
+    .hud-label {
+      display: block;
+      font-size: 10px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .hud-value {
+      display: block;
+      font-size: 1.4em;
+      font-weight: 800;
+      color: #ffc832;
+    }
+    .hud-value.pink { color: #ff88ff; }
+    #gameCanvas {
+      border: 2px solid #333;
+      border-radius: 4px;
+      background: #0d0d0d;
+      image-rendering: pixelated;
+      max-width: 100%;
+      touch-action: none;
+    }
+
+    /* Mobile controls */
+    .mobile-controls {
+      display: none;
+      margin-top: 10px;
+      gap: 4px;
+    }
+    .dpad {
+      display: grid;
+      grid-template-columns: 54px 54px 54px;
+      grid-template-rows: 54px 54px 54px;
+      gap: 4px;
+    }
+    .dpad-btn {
+      width: 54px;
+      height: 54px;
+      background: #1a1a1a;
+      border: 2px solid #333;
+      border-radius: 10px;
+      color: #888;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    .dpad-btn:active { background: #ffc832; color: #000; border-color: #ffc832; }
+    .dpad-spacer { width: 54px; height: 54px; }
+
+    /* Game over overlay */
+    .gameover-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 500;
+    }
+    .gameover-overlay.hidden { display: none; }
+    .gameover-box {
+      background: #1a1a1a;
+      border: 2px solid #ffc832;
+      border-radius: 16px;
+      padding: 30px;
+      text-align: center;
+      width: 320px;
+      max-width: 90vw;
+    }
+    .gameover-box h2 { color: #ff4444; font-size: 1.5em; margin-bottom: 12px; }
+    .gameover-box .stat {
+      color: #aaa;
+      font-size: 14px;
+      margin: 6px 0;
+    }
+    .gameover-box .stat strong { color: #ffc832; }
+    .gameover-box .stat.pink strong { color: #ff88ff; }
+    .gameover-box .new-record { color: #ff88ff; font-weight: 700; font-size: 13px; margin: 8px 0; }
+    .gameover-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    /* Pause overlay */
+    .pause-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      pointer-events: none;
+    }
+    .pause-overlay.hidden { display: none; }
+    .pause-text {
+      color: #ffc832;
+      font-size: 2em;
+      font-weight: 800;
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .topbar { padding: 8px 12px; gap: 8px; }
+      .topbar .logo { font-size: 13px; }
+      .topbar .page-title { font-size: 13px; }
+      .user-info { display: none; }
+      .mobile-controls { display: flex; justify-content: center; }
+      .lobby h1 { font-size: 1.5em; }
+      .lobby { padding: 16px 12px; }
+      .game-hud { gap: 16px; }
+    }
+
+    @media (pointer: coarse) {
+      .mobile-controls { display: flex; justify-content: center; }
+    }
+
+    /* Countdown overlay */
+    .countdown-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 60;
+      pointer-events: none;
+    }
+    .countdown-overlay.hidden { display: none; }
+    .countdown-num {
+      font-size: 4em;
+      font-weight: 900;
+      color: #ffc832;
+      text-shadow: 0 0 30px rgba(255,200,50,0.5);
+      animation: countPulse 0.5s ease-out;
+    }
+    @keyframes countPulse {
+      0% { transform: scale(1.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="logo"><a href="https://pamplemouche.com">PAMPLE<span>MOUCHE</span></a></div>
+  <span class="sep">|</span>
+  <span class="page-title">Snake</span>
+  <div class="topbar-right">
+    <span class="coins-display" id="topCoins" style="display:none"></span>
+    <span class="user-info" id="userInfo"></span>
+    <button class="btn-logout" id="btnLogout" style="display:none" onclick="logout()">Deconnexion</button>
+  </div>
+</div>
+
+<!-- Login overlay -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <h2>Snake Pamplemouche</h2>
+    <p class="subtitle">Connecte-toi pour jouer</p>
+    <div class="login-tabs">
+      <div class="login-tab active" id="tabLogin" onclick="switchLoginTab('login')">Connexion</div>
+      <div class="login-tab" id="tabRegister" onclick="switchLoginTab('register')">Inscription</div>
+    </div>
+    <div id="formLogin">
+      <input type="text" id="loginUser" placeholder="Pseudo" maxlength="16">
+      <input type="password" id="loginPass" placeholder="Mot de passe">
+      <button class="btn-primary" onclick="doLogin()">CONNEXION</button>
+    </div>
+    <div id="formRegister" style="display:none">
+      <input type="text" id="regUser" placeholder="Pseudo" maxlength="16">
+      <input type="password" id="regPass" placeholder="Mot de passe">
+      <input type="password" id="regPass2" placeholder="Confirmer le mot de passe">
+      <button class="btn-primary" onclick="doRegister()">INSCRIPTION</button>
+    </div>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- Main content -->
+<div class="main-content">
+
+  <!-- Lobby screen -->
+  <div class="screen active" id="screenLobby">
+    <div class="lobby">
+      <h1>SNAKE<small>Pamplemouche Edition</small></h1>
+      <p class="best-score">Meilleur score : <strong id="bestScoreDisplay">0</strong></p>
+
+      <!-- Echange pieces/pamp -->
+      <div class="lobby-section" style="display:block;margin-bottom:12px;text-align:left">
+        <h3 style="color:#ff88ff">Echange Pieces / Pamp</h3>
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center;font-size:13px">
+          <span style="color:#888">Pieces:</span><strong id="exchCoins" style="color:#ffc832">0</strong>
+          <span style="color:#888;margin-left:8px">Pamp:</span><strong id="exchPamp" style="color:#ff88ff">0</strong>
+          <button onclick="loadExchangeBalance()" style="margin-left:auto;padding:2px 8px;background:#222;border:1px solid #444;border-radius:4px;color:#888;font-size:11px;cursor:pointer">&#x21BB;</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button onclick="exchangeToPamp()" style="flex:1;padding:8px;background:#ff88ff;color:#000;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">Convertir 500 pieces en 5 Pamp</button>
+        </div>
+        <div style="font-size:11px;color:#888;margin-top:4px">Taux: 100 pieces = 1 Pamp (par lot de 500)</div>
+        <div id="exchMsg" style="font-size:11px;text-align:center;margin-top:4px;min-height:14px"></div>
+      </div>
+
+      <!-- Parametres -->
+      <div class="lobby-section" style="display:block;margin-bottom:12px">
+        <h3>Parametres</h3>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <label style="font-size:13px;color:#888">Vitesse</label>
+            <select id="settingSpeed" style="width:140px;padding:6px 10px;background:#222;border:1px solid #444;border-radius:6px;color:#fff;font-size:13px">
+              <option value="220">Lent</option>
+              <option value="150" selected>Normal</option>
+              <option value="100">Rapide</option>
+              <option value="60">Extreme</option>
+            </select>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <label style="font-size:13px;color:#888">Taille de la zone</label>
+            <select id="settingGrid" style="width:140px;padding:6px 10px;background:#222;border:1px solid #444;border-radius:6px;color:#fff;font-size:13px">
+              <option value="10">Petite (10x10)</option>
+              <option value="15">Moyenne (15x15)</option>
+              <option value="20" selected>Grande (20x20)</option>
+              <option value="30">Enorme (30x30)</option>
+            </select>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <label style="font-size:13px;color:#888">Nourriture visible</label>
+            <select id="settingFood" style="width:140px;padding:6px 10px;background:#222;border:1px solid #444;border-radius:6px;color:#fff;font-size:13px">
+              <option value="1" selected>1 point</option>
+              <option value="3">3 points</option>
+              <option value="5">5 points</option>
+              <option value="10">10 points</option>
+              <option value="random">Aleatoire</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <button class="big-btn" onclick="startSolo()">Jouer seul</button>
+
+      <button class="big-btn secondary" id="btnCreateParty" onclick="createParty()">Creer une partie</button>
+
+      <button class="big-btn secondary" id="btnShowJoin" onclick="toggleJoinSection()">Rejoindre une partie</button>
+
+      <!-- Join section (hidden by default) -->
+      <div class="lobby-section" id="joinSection" style="display:none">
+        <h3>Rejoindre une partie</h3>
+        <input type="text" id="joinCodeInput" placeholder="CODE" maxlength="4">
+        <button class="big-btn" style="margin-top:10px" onclick="joinParty()">Rejoindre</button>
+        <div id="joinError" style="color:#ff4444;font-size:12px;text-align:center;min-height:16px;margin-top:6px"></div>
+      </div>
+
+      <!-- Party section (hidden by default) -->
+      <div class="lobby-section" id="partySection" style="display:none">
+        <h3>Ta partie</h3>
+        <div class="party-code-display" id="partyCodeDisplay"></div>
+        <p class="party-status" id="partyStatus">En attente de joueurs...</p>
+        <div class="party-players" id="partyPlayers"></div>
+        <button class="big-btn" style="margin-top:12px" onclick="startPartyGame()">Lancer la partie</button>
+        <button class="big-btn secondary" style="margin-top:6px" onclick="leaveParty()">Quitter</button>
+      </div>
+
+      <!-- Friends list -->
+      <div class="friends-section" id="friendsSection">
+        <h3>Amis</h3>
+        <div id="friendsList"><span style="color:#555;font-size:12px">Chargement...</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game screen -->
+  <div class="screen" id="screenGame">
+    <div class="game-screen">
+      <div class="game-hud">
+        <div class="hud-item">
+          <span class="hud-label">Score</span>
+          <span class="hud-value" id="hudScore">0</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Meilleur</span>
+          <span class="hud-value" id="hudBest">0</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Pieces</span>
+          <span class="hud-value pink" id="hudCoins">0</span>
+        </div>
+        <div class="hud-item" id="hudPartyInfo" style="display:none">
+          <span class="hud-label">Partie</span>
+          <span class="hud-value" id="hudPartyCode" style="font-size:1em"></span>
+        </div>
+      </div>
+
+      <div style="position:relative;display:inline-block">
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div class="countdown-overlay hidden" id="countdownOverlay">
+          <div class="countdown-num" id="countdownNum">3</div>
+        </div>
+        <div class="pause-overlay hidden" id="pauseOverlay">
+          <span class="pause-text">PAUSE</span>
+        </div>
+      </div>
+
+      <div class="mobile-controls">
+        <div class="dpad">
+          <div class="dpad-spacer"></div>
+          <div class="dpad-btn" ontouchstart="setDir(0,-1);event.preventDefault()" onmousedown="setDir(0,-1)">&#9650;</div>
+          <div class="dpad-spacer"></div>
+          <div class="dpad-btn" ontouchstart="setDir(-1,0);event.preventDefault()" onmousedown="setDir(-1,0)">&#9664;</div>
+          <div class="dpad-spacer"></div>
+          <div class="dpad-btn" ontouchstart="setDir(1,0);event.preventDefault()" onmousedown="setDir(1,0)">&#9654;</div>
+          <div class="dpad-spacer"></div>
+          <div class="dpad-btn" ontouchstart="setDir(0,1);event.preventDefault()" onmousedown="setDir(0,1)">&#9660;</div>
+          <div class="dpad-spacer"></div>
+        </div>
+      </div>
+
+      <button class="big-btn secondary" style="margin-top:12px;max-width:200px" onclick="backToLobby()">Retour au menu</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Game over overlay -->
+<div class="gameover-overlay hidden" id="gameoverOverlay">
+  <div class="gameover-box">
+    <h2>Perdu !</h2>
+    <div class="stat">Score : <strong id="goScore">0</strong></div>
+    <div class="stat">Meilleur : <strong id="goBest">0</strong></div>
+    <div class="stat pink">Pieces gagnees : <strong id="goCoins">0</strong></div>
+    <div class="new-record hidden" id="goNewRecord">Nouveau record !</div>
+    <div class="gameover-btns">
+      <button class="big-btn" onclick="restartGame()">Rejouer</button>
+      <button class="big-btn secondary" onclick="backToLobby()">Menu</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== CONFIG ====================
+const API = 'https://arc.pamplemouche.com/api';
+let CELL_COUNT = 20;
+let GRID_SIZE = 20;
+let CANVAS_SIZE = GRID_SIZE * CELL_COUNT;
+let BASE_SPEED = 150;
+const MIN_SPEED = 40;
+const SPEED_STEP = 3;
+let FOOD_COUNT = 1;
+
+function applySettings() {
+  CELL_COUNT = parseInt(document.getElementById('settingGrid').value) || 20;
+  BASE_SPEED = parseInt(document.getElementById('settingSpeed').value) || 150;
+  const foodVal = document.getElementById('settingFood').value;
+  FOOD_COUNT = foodVal === 'random' ? -1 : (parseInt(foodVal) || 1);
+  GRID_SIZE = Math.floor(400 / CELL_COUNT);
+  CANVAS_SIZE = GRID_SIZE * CELL_COUNT;
+  canvas.width = CANVAS_SIZE;
+  canvas.height = CANVAS_SIZE;
+}
+
+let token = localStorage.getItem('pamp_token');
+let username = localStorage.getItem('pamp_username');
+let totalCoins = 0;
+let bestScore = parseInt(localStorage.getItem('snake_best') || '0');
+
+// ==================== AUTH ====================
+function switchLoginTab(tab) {
+  document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+  document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+  document.getElementById('formLogin').style.display = tab === 'login' ? '' : 'none';
+  document.getElementById('formRegister').style.display = tab === 'register' ? '' : 'none';
+  document.getElementById('loginError').textContent = '';
+}
+
+function showLoginError(msg) {
+  document.getElementById('loginError').textContent = msg;
+}
+
+async function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  if (!u || !p) return showLoginError('Remplis tous les champs');
+  try {
+    const r = await fetch(API + '/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p })
+    });
+    const d = await r.json();
+    if (!d.ok) return showLoginError(d.error || 'Erreur');
+    token = d.token;
+    username = d.username;
+    localStorage.setItem('pamp_token', token);
+    localStorage.setItem('pamp_username', username);
+    onLoggedIn();
+  } catch(e) { showLoginError('Erreur de connexion'); }
+}
+
+async function doRegister() {
+  const u = document.getElementById('regUser').value.trim();
+  const p = document.getElementById('regPass').value;
+  const p2 = document.getElementById('regPass2').value;
+  if (!u || !p) return showLoginError('Remplis tous les champs');
+  if (p !== p2) return showLoginError('Les mots de passe ne correspondent pas');
+  if (p.length < 3) return showLoginError('Mot de passe trop court (3 min)');
+  try {
+    const r = await fetch(API + '/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p })
+    });
+    const d = await r.json();
+    if (!d.ok) return showLoginError(d.error || 'Erreur');
+    token = d.token;
+    username = d.username;
+    localStorage.setItem('pamp_token', token);
+    localStorage.setItem('pamp_username', username);
+    onLoggedIn();
+  } catch(e) { showLoginError('Erreur de connexion'); }
+}
+
+function logout() {
+  token = null;
+  username = null;
+  localStorage.removeItem('pamp_token');
+  localStorage.removeItem('pamp_username');
+  document.getElementById('loginOverlay').classList.remove('hidden');
+  document.getElementById('btnLogout').style.display = 'none';
+  document.getElementById('userInfo').textContent = '';
+  document.getElementById('topCoins').style.display = 'none';
+  showScreen('screenLobby');
+  stopGame();
+}
+
+function onLoggedIn() {
+  document.getElementById('loginOverlay').classList.add('hidden');
+  document.getElementById('userInfo').innerHTML = 'Connecte : <strong>' + esc(username) + '</strong>';
+  document.getElementById('btnLogout').style.display = '';
+  loadFriends();
+  fetchCoins();
+  loadExchangeBalance();
+}
+
+function checkAuth() {
+  // Check URL hash for token
+  const h = location.hash.match(/token=([a-f0-9]+)/);
+  if (h) {
+    token = h[1];
+    localStorage.setItem('pamp_token', token);
+    location.hash = '';
+    // Fetch username from server
+    fetch(API + '/me', { headers: { 'Authorization': 'Bearer ' + token } })
+      .then(r => r.json())
+      .then(d => {
+        if (d.username) {
+          username = d.username;
+          localStorage.setItem('pamp_username', username);
+          onLoggedIn();
+        }
+      }).catch(() => {});
+    return;
+  }
+  if (token && username) {
+    onLoggedIn();
+  }
+}
+
+async function fetchCoins() {
+  if (!token) return;
+  try {
+    const r = await fetch(API + '/me', { headers: { 'Authorization': 'Bearer ' + token } });
+    const d = await r.json();
+    if (d.coins !== undefined) {
+      totalCoins = d.coins;
+      document.getElementById('topCoins').textContent = totalCoins + ' pieces';
+      document.getElementById('topCoins').style.display = '';
+    }
+  } catch(e) {}
+}
+
+async function claimCoins(amount) {
+  if (!token || amount <= 0) return;
+  try {
+    await fetch(API + '/claim-coins', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ amount })
+    });
+    fetchCoins();
+  } catch(e) {}
+}
+
+// ==================== EXCHANGE ====================
+async function loadExchangeBalance() {
+  if (!token) return;
+  try {
+    const r = await fetch(API + '/loadout', { headers: { 'Authorization': 'Bearer ' + token } });
+    const d = await r.json();
+    if (d.ok) {
+      document.getElementById('exchCoins').textContent = d.coins || 0;
+      document.getElementById('exchPamp').textContent = d.pamp || 0;
+    }
+  } catch(e) {}
+}
+
+async function exchangeToPamp() {
+  const msgEl = document.getElementById('exchMsg');
+  // 500 coins = 5 pamp (100 coins = 1 pamp)
+  try {
+    const r = await fetch(API + '/convert-pamp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      msgEl.textContent = '+5 Pamp ! (500 pieces depensees)';
+      msgEl.style.color = '#ff88ff';
+      loadExchangeBalance();
+      fetchCoins();
+    } else {
+      msgEl.textContent = d.error || 'Erreur';
+      msgEl.style.color = '#ff4444';
+    }
+  } catch(e) { msgEl.textContent = 'Erreur de connexion'; msgEl.style.color = '#ff4444'; }
+}
+
+// ==================== FRIENDS ====================
+let friendsList = [];
+
+async function loadFriends() {
+  if (!token) return;
+  try {
+    const r = await fetch(API + '/friends', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const d = await r.json();
+    if (Array.isArray(d)) {
+      friendsList = d.filter(f => f.status === 'accepted');
+    } else if (d.friends && Array.isArray(d.friends)) {
+      friendsList = d.friends.filter(f => f.status === 'accepted');
+    } else {
+      friendsList = [];
+    }
+    renderFriends();
+  } catch(e) {
+    document.getElementById('friendsList').innerHTML = '<span style="color:#555;font-size:12px">Impossible de charger les amis</span>';
+  }
+}
+
+function renderFriends() {
+  const el = document.getElementById('friendsList');
+  if (friendsList.length === 0) {
+    el.innerHTML = '<span style="color:#555;font-size:12px">Aucun ami pour le moment</span>';
+    return;
+  }
+  el.innerHTML = friendsList.map(f => {
+    const name = f.friend_username || f.username || 'Joueur';
+    const initial = name.charAt(0).toUpperCase();
+    return `<div class="friend-row">
+      <div class="avatar">${esc(initial)}</div>
+      <span class="name">${esc(name)}</span>
+      <button class="btn-invite" onclick="inviteFriend('${esc(name)}')" ${currentPartyCode ? '' : 'disabled'}>Inviter</button>
+    </div>`;
+  }).join('');
+}
+
+function inviteFriend(friendName) {
+  if (!currentPartyCode) return;
+  // For now, show a message with the code to share
+  alert('Dis a ' + friendName + ' de rejoindre avec le code : ' + currentPartyCode);
+}
+
+// ==================== PARTY SYSTEM ====================
+let currentPartyCode = null;
+let partyPlayers = [];
+let isHost = false;
+let isPartyMode = false;
+
+function generateCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let code = '';
+  for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+function createParty() {
+  currentPartyCode = generateCode();
+  isHost = true;
+  isPartyMode = true;
+  partyPlayers = [{ name: username, isHost: true }];
+
+  document.getElementById('partySection').style.display = '';
+  document.getElementById('joinSection').style.display = 'none';
+  document.getElementById('partyCodeDisplay').textContent = currentPartyCode;
+  document.getElementById('partyStatus').textContent = 'En attente de joueurs...';
+  document.getElementById('btnCreateParty').style.display = 'none';
+  document.getElementById('btnShowJoin').style.display = 'none';
+  renderPartyPlayers();
+  renderFriends(); // re-render with invite buttons enabled
+}
+
+function toggleJoinSection() {
+  const el = document.getElementById('joinSection');
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+function joinParty() {
+  const code = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+  if (code.length !== 4) {
+    document.getElementById('joinError').textContent = 'Le code doit faire 4 lettres';
+    return;
+  }
+  // Client-side simulation of joining
+  currentPartyCode = code;
+  isHost = false;
+  isPartyMode = true;
+  partyPlayers = [
+    { name: 'Hote', isHost: true },
+    { name: username, isHost: false }
+  ];
+  document.getElementById('joinSection').style.display = 'none';
+  document.getElementById('partySection').style.display = '';
+  document.getElementById('partyCodeDisplay').textContent = currentPartyCode;
+  document.getElementById('partyStatus').textContent = 'Connecte a la partie !';
+  document.getElementById('btnCreateParty').style.display = 'none';
+  document.getElementById('btnShowJoin').style.display = 'none';
+  renderPartyPlayers();
+}
+
+function renderPartyPlayers() {
+  const el = document.getElementById('partyPlayers');
+  el.innerHTML = partyPlayers.map(p => {
+    const initial = p.name.charAt(0).toUpperCase();
+    return `<div class="party-player">
+      <div class="avatar">${esc(initial)}</div>
+      <span class="name">${esc(p.name)}</span>
+      ${p.isHost ? '<span class="host-badge">HOTE</span>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function leaveParty() {
+  currentPartyCode = null;
+  isHost = false;
+  isPartyMode = false;
+  partyPlayers = [];
+  document.getElementById('partySection').style.display = 'none';
+  document.getElementById('btnCreateParty').style.display = '';
+  document.getElementById('btnShowJoin').style.display = '';
+  renderFriends();
+}
+
+function startPartyGame() {
+  startGame();
+}
+
+// ==================== GAME ====================
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let snake = [];
+let foods = [];
+let direction = { x: 1, y: 0 };
+let nextDirection = { x: 1, y: 0 };
+let score = 0;
+let coinsEarned = 0;
+let gameRunning = false;
+let gamePaused = false;
+let gameLoop = null;
+let speed = BASE_SPEED;
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function startSolo() {
+  isPartyMode = false;
+  document.getElementById('hudPartyInfo').style.display = 'none';
+  startGame();
+}
+
+function startGame() {
+  showScreen('screenGame');
+  document.getElementById('gameoverOverlay').classList.add('hidden');
+
+  if (isPartyMode && currentPartyCode) {
+    document.getElementById('hudPartyInfo').style.display = '';
+    document.getElementById('hudPartyCode').textContent = currentPartyCode;
+  }
+
+  applySettings();
+  resizeCanvas();
+  resetGame();
+  runCountdown(() => {
+    gameRunning = true;
+    gamePaused = false;
+    tick();
+  });
+}
+
+function resetGame() {
+  const mid = Math.floor(CELL_COUNT / 2);
+  snake = [
+    { x: mid, y: mid },
+    { x: mid - 1, y: mid },
+    { x: mid - 2, y: mid }
+  ];
+  direction = { x: 1, y: 0 };
+  nextDirection = { x: 1, y: 0 };
+  score = 0;
+  coinsEarned = 0;
+  speed = BASE_SPEED;
+  gameRunning = false;
+  gamePaused = false;
+  clearTimeout(gameLoop);
+  foods = [];
+  spawnFood();
+  updateHUD();
+  draw();
+}
+
+function resizeCanvas() {
+  const maxW = Math.min(window.innerWidth - 24, 500);
+  const maxH = window.innerHeight - 240;
+  const size = Math.min(maxW, maxH, 500);
+  canvas.style.width = size + 'px';
+  canvas.style.height = size + 'px';
+  canvas.width = CANVAS_SIZE;
+  canvas.height = CANVAS_SIZE;
+}
+
+function runCountdown(cb) {
+  const overlay = document.getElementById('countdownOverlay');
+  const num = document.getElementById('countdownNum');
+  overlay.classList.remove('hidden');
+  let count = 3;
+  draw();
+  num.textContent = count;
+
+  const iv = setInterval(() => {
+    count--;
+    if (count <= 0) {
+      clearInterval(iv);
+      overlay.classList.add('hidden');
+      cb();
+    } else {
+      num.textContent = count;
+      // Re-trigger animation
+      num.style.animation = 'none';
+      void num.offsetHeight;
+      num.style.animation = '';
+    }
+  }, 700);
+}
+
+function spawnFood() {
+  const occupied = new Set(snake.map(s => s.x + ',' + s.y));
+  foods.forEach(f => occupied.add(f.x + ',' + f.y));
+  // Random mode: pick a new random count each time
+  const targetCount = FOOD_COUNT === -1 ? Math.floor(Math.random() * 10) + 1 : FOOD_COUNT;
+  // Add food until we have targetCount
+  while (foods.length < targetCount) {
+    let f, attempts = 0;
+    do {
+      f = { x: Math.floor(Math.random() * CELL_COUNT), y: Math.floor(Math.random() * CELL_COUNT) };
+      attempts++;
+    } while (occupied.has(f.x + ',' + f.y) && attempts < 200);
+    foods.push(f);
+    occupied.add(f.x + ',' + f.y);
+  }
+}
+
+function tick() {
+  if (!gameRunning || gamePaused) return;
+
+  direction = { ...nextDirection };
+
+  const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
+
+  // Wall collision
+  if (head.x < 0 || head.x >= CELL_COUNT || head.y < 0 || head.y >= CELL_COUNT) {
+    return gameOver();
+  }
+
+  // Self collision
+  for (let i = 0; i < snake.length; i++) {
+    if (snake[i].x === head.x && snake[i].y === head.y) {
+      return gameOver();
+    }
+  }
+
+  snake.unshift(head);
+
+  // Eat food
+  const eatenIdx = foods.findIndex(f => f.x === head.x && f.y === head.y);
+  if (eatenIdx !== -1) {
+    foods.splice(eatenIdx, 1);
+    score++;
+    coinsEarned++;
+    speed = Math.max(MIN_SPEED, BASE_SPEED - score * SPEED_STEP);
+    spawnFood();
+    updateHUD();
+  } else {
+    snake.pop();
+  }
+
+  draw();
+  gameLoop = setTimeout(tick, speed);
+}
+
+function draw() {
+  ctx.fillStyle = '#0d0d0d';
+  ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+  // Grid lines (subtle)
+  ctx.strokeStyle = '#161616';
+  ctx.lineWidth = 0.5;
+  for (let i = 1; i < CELL_COUNT; i++) {
+    ctx.beginPath();
+    ctx.moveTo(i * GRID_SIZE, 0);
+    ctx.lineTo(i * GRID_SIZE, CANVAS_SIZE);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, i * GRID_SIZE);
+    ctx.lineTo(CANVAS_SIZE, i * GRID_SIZE);
+    ctx.stroke();
+  }
+
+  // Food
+  for (const f of foods) {
+    ctx.fillStyle = '#ff88ff';
+    ctx.shadowColor = '#ff88ff';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(
+      f.x * GRID_SIZE + GRID_SIZE / 2,
+      f.y * GRID_SIZE + GRID_SIZE / 2,
+      GRID_SIZE / 2 - 2,
+      0, Math.PI * 2
+    );
+    ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+
+  // Snake
+  for (let i = 0; i < snake.length; i++) {
+    const s = snake[i];
+    const isHead = i === 0;
+    const t = i / snake.length;
+
+    if (isHead) {
+      ctx.fillStyle = '#ffc832';
+      ctx.shadowColor = '#ffc832';
+      ctx.shadowBlur = 6;
+    } else {
+      // Gradient from gold to darker
+      const r = Math.round(255 - t * 100);
+      const g = Math.round(200 - t * 120);
+      const b = Math.round(50 - t * 30);
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.shadowBlur = 0;
+    }
+
+    const padding = isHead ? 1 : 2;
+    const radius = isHead ? 4 : 3;
+    roundRect(
+      ctx,
+      s.x * GRID_SIZE + padding,
+      s.y * GRID_SIZE + padding,
+      GRID_SIZE - padding * 2,
+      GRID_SIZE - padding * 2,
+      radius
+    );
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Eyes on head
+    if (isHead) {
+      ctx.fillStyle = '#000';
+      const cx = s.x * GRID_SIZE + GRID_SIZE / 2;
+      const cy = s.y * GRID_SIZE + GRID_SIZE / 2;
+      const eyeOff = 3;
+      let ex1, ey1, ex2, ey2;
+      if (direction.x === 1) { ex1 = cx + 3; ey1 = cy - eyeOff; ex2 = cx + 3; ey2 = cy + eyeOff; }
+      else if (direction.x === -1) { ex1 = cx - 3; ey1 = cy - eyeOff; ex2 = cx - 3; ey2 = cy + eyeOff; }
+      else if (direction.y === -1) { ex1 = cx - eyeOff; ey1 = cy - 3; ex2 = cx + eyeOff; ey2 = cy - 3; }
+      else { ex1 = cx - eyeOff; ey1 = cy + 3; ex2 = cx + eyeOff; ey2 = cy + 3; }
+      ctx.beginPath();
+      ctx.arc(ex1, ey1, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(ex2, ey2, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Border
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function updateHUD() {
+  document.getElementById('hudScore').textContent = score;
+  document.getElementById('hudBest').textContent = Math.max(bestScore, score);
+  document.getElementById('hudCoins').textContent = coinsEarned;
+}
+
+function gameOver() {
+  gameRunning = false;
+  clearTimeout(gameLoop);
+
+  // Flash the snake red
+  ctx.fillStyle = 'rgba(255,0,0,0.3)';
+  ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+  const isNewRecord = score > bestScore;
+  if (isNewRecord) {
+    bestScore = score;
+    localStorage.setItem('snake_best', bestScore.toString());
+  }
+
+  // Claim coins
+  if (coinsEarned > 0) {
+    claimCoins(coinsEarned);
+  }
+
+  // Show game over
+  document.getElementById('goScore').textContent = score;
+  document.getElementById('goBest').textContent = bestScore;
+  document.getElementById('goCoins').textContent = coinsEarned;
+  document.getElementById('goNewRecord').classList.toggle('hidden', !isNewRecord);
+  document.getElementById('gameoverOverlay').classList.remove('hidden');
+  document.getElementById('bestScoreDisplay').textContent = bestScore;
+}
+
+function restartGame() {
+  document.getElementById('gameoverOverlay').classList.add('hidden');
+  resetGame();
+  runCountdown(() => {
+    gameRunning = true;
+    gamePaused = false;
+    tick();
+  });
+}
+
+function stopGame() {
+  gameRunning = false;
+  gamePaused = false;
+  clearTimeout(gameLoop);
+}
+
+function backToLobby() {
+  stopGame();
+  document.getElementById('gameoverOverlay').classList.add('hidden');
+  showScreen('screenLobby');
+  document.getElementById('bestScoreDisplay').textContent = bestScore;
+}
+
+// ==================== CONTROLS ====================
+function setDir(dx, dy) {
+  // Prevent reversing
+  if (snake.length > 1) {
+    if (direction.x === -dx && direction.y === -dy) return;
+  }
+  nextDirection = { x: dx, y: dy };
+}
+
+document.addEventListener('keydown', (e) => {
+  if (!gameRunning) return;
+
+  switch(e.key) {
+    case 'ArrowUp': case 'w': case 'W': case 'z': case 'Z':
+      e.preventDefault(); setDir(0, -1); break;
+    case 'ArrowDown': case 's': case 'S':
+      e.preventDefault(); setDir(0, 1); break;
+    case 'ArrowLeft': case 'a': case 'A': case 'q': case 'Q':
+      e.preventDefault(); setDir(-1, 0); break;
+    case 'ArrowRight': case 'd': case 'D':
+      e.preventDefault(); setDir(1, 0); break;
+    case ' ':
+      e.preventDefault();
+      if (gameRunning) {
+        gamePaused = !gamePaused;
+        document.getElementById('pauseOverlay').classList.toggle('hidden', !gamePaused);
+        if (!gamePaused) tick();
+      }
+      break;
+    case 'Escape':
+      backToLobby();
+      break;
+  }
+});
+
+// Enter key on login/register forms
+document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('regPass2').addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); });
+document.getElementById('joinCodeInput').addEventListener('keydown', e => { if (e.key === 'Enter') joinParty(); });
+
+// Touch swipe on canvas
+let touchStartX = 0, touchStartY = 0;
+canvas.addEventListener('touchstart', e => {
+  const t = e.touches[0];
+  touchStartX = t.clientX;
+  touchStartY = t.clientY;
+}, { passive: true });
+
+canvas.addEventListener('touchend', e => {
+  const t = e.changedTouches[0];
+  const dx = t.clientX - touchStartX;
+  const dy = t.clientY - touchStartY;
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
+
+  if (Math.max(absDx, absDy) < 20) return; // too small
+
+  if (absDx > absDy) {
+    setDir(dx > 0 ? 1 : -1, 0);
+  } else {
+    setDir(0, dy > 0 ? 1 : -1);
+  }
+}, { passive: true });
+
+// Window resize
+window.addEventListener('resize', () => {
+  if (document.getElementById('screenGame').classList.contains('active')) {
+    resizeCanvas();
+    draw();
+  }
+});
+
+// ==================== UTILS ====================
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ==================== INIT ====================
+document.getElementById('bestScoreDisplay').textContent = bestScore;
+checkAuth();
+</script>
+</body>
+</html>
