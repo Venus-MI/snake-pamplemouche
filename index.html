@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Snake - Pamplemouche</title>
+  <script src="https://arc.pamplemouche.com/pamp-auth.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -519,21 +520,8 @@
   <div class="login-box">
     <h2>Snake Pamplemouche</h2>
     <p class="subtitle">Connecte-toi pour jouer</p>
-    <div class="login-tabs">
-      <div class="login-tab active" id="tabLogin" onclick="switchLoginTab('login')">Connexion</div>
-      <div class="login-tab" id="tabRegister" onclick="switchLoginTab('register')">Inscription</div>
-    </div>
-    <div id="formLogin">
-      <input type="text" id="loginUser" placeholder="Pseudo" maxlength="16">
-      <input type="password" id="loginPass" placeholder="Mot de passe">
-      <button class="btn-primary" onclick="doLogin()">CONNEXION</button>
-    </div>
-    <div id="formRegister" style="display:none">
-      <input type="text" id="regUser" placeholder="Pseudo" maxlength="16">
-      <input type="password" id="regPass" placeholder="Mot de passe">
-      <input type="password" id="regPass2" placeholder="Confirmer le mot de passe">
-      <button class="btn-primary" onclick="doRegister()">INSCRIPTION</button>
-    </div>
+    <button class="btn-primary" onclick="goToLogin()">SE CONNECTER</button>
+    <button class="btn-primary" onclick="goToLogin()" style="margin-top:8px;background:#222;color:#ffc832;border:1px solid #ffc832">S'INSCRIRE</button>
     <div class="login-error" id="loginError"></div>
   </div>
 </div>
@@ -724,59 +712,9 @@ let totalCoins = 0;
 let bestScore = parseInt(localStorage.getItem('snake_best') || '0');
 
 // ==================== AUTH ====================
-function switchLoginTab(tab) {
-  document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
-  document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
-  document.getElementById('formLogin').style.display = tab === 'login' ? '' : 'none';
-  document.getElementById('formRegister').style.display = tab === 'register' ? '' : 'none';
-  document.getElementById('loginError').textContent = '';
-}
-
-function showLoginError(msg) {
-  document.getElementById('loginError').textContent = msg;
-}
-
-async function doLogin() {
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value;
-  if (!u || !p) return showLoginError('Remplis tous les champs');
-  try {
-    const r = await fetch(API + '/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: u, password: p })
-    });
-    const d = await r.json();
-    if (!d.ok) return showLoginError(d.error || 'Erreur');
-    token = d.token;
-    username = d.username;
-    localStorage.setItem('pamp_token', token);
-    localStorage.setItem('pamp_username', username);
-    onLoggedIn();
-  } catch(e) { showLoginError('Erreur de connexion'); }
-}
-
-async function doRegister() {
-  const u = document.getElementById('regUser').value.trim();
-  const p = document.getElementById('regPass').value;
-  const p2 = document.getElementById('regPass2').value;
-  if (!u || !p) return showLoginError('Remplis tous les champs');
-  if (p !== p2) return showLoginError('Les mots de passe ne correspondent pas');
-  if (p.length < 3) return showLoginError('Mot de passe trop court (3 min)');
-  try {
-    const r = await fetch(API + '/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: u, password: p })
-    });
-    const d = await r.json();
-    if (!d.ok) return showLoginError(d.error || 'Erreur');
-    token = d.token;
-    username = d.username;
-    localStorage.setItem('pamp_token', token);
-    localStorage.setItem('pamp_username', username);
-    onLoggedIn();
-  } catch(e) { showLoginError('Erreur de connexion'); }
+// Sign-in / sign-up are now owned by the central Pamplemouche login.
+function goToLogin() {
+  PampAuth.redirectToLogin();
 }
 
 function logout() {
@@ -784,12 +722,13 @@ function logout() {
   username = null;
   localStorage.removeItem('pamp_token');
   localStorage.removeItem('pamp_username');
-  document.getElementById('loginOverlay').classList.remove('hidden');
   document.getElementById('btnLogout').style.display = 'none';
   document.getElementById('userInfo').textContent = '';
   document.getElementById('topCoins').style.display = 'none';
   showScreen('screenLobby');
   stopGame();
+  // Revoke the centralized session + clear legacy keys, then go to login.
+  PampAuth.logout();
 }
 
 function onLoggedIn() {
@@ -801,25 +740,21 @@ function onLoggedIn() {
   loadExchangeBalance();
 }
 
-function checkAuth() {
-  // Check URL hash for token
-  const h = location.hash.match(/token=([a-f0-9]+)/);
-  if (h) {
-    token = h[1];
-    localStorage.setItem('pamp_token', token);
-    location.hash = '';
-    // Fetch username from server
-    fetch(API + '/me', { headers: { 'Authorization': 'Bearer ' + token } })
-      .then(r => r.json())
-      .then(d => {
-        if (d.username) {
-          username = d.username;
-          localStorage.setItem('pamp_username', username);
-          onLoggedIn();
-        }
-      }).catch(() => {});
-    return;
-  }
+async function checkAuth() {
+  // Resolve identity via the centralized auth SDK
+  // (#token hash -> .pamplemouche.com cookie -> legacy localStorage).
+  try {
+    const user = await PampAuth.init();
+    if (user) {
+      token = PampAuth.getToken();
+      username = user.username || user.displayName;
+      localStorage.setItem('pamp_token', token);
+      localStorage.setItem('pamp_username', username);
+      onLoggedIn();
+      return;
+    }
+  } catch (e) {}
+  // Legacy fallback (kept to reduce risk)
   if (token && username) {
     onLoggedIn();
   }
@@ -1370,10 +1305,6 @@ document.addEventListener('keydown', (e) => {
       break;
   }
 });
-
-// Enter key on login/register forms
-document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-document.getElementById('regPass2').addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); });
 document.getElementById('joinCodeInput').addEventListener('keydown', e => { if (e.key === 'Enter') joinParty(); });
 
 // Touch swipe on canvas
